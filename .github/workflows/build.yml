@@ -57,17 +57,36 @@ jobs:
         mkdir -p CollabRef-Linux/plugins/platforms
         mkdir -p CollabRef-Linux/plugins/imageformats
         mkdir -p CollabRef-Linux/plugins/xcbglintegrations
+        mkdir -p CollabRef-Linux/plugins/platforminputcontexts
         cp $QT_PLUGIN_PATH/platforms/libqxcb.so CollabRef-Linux/plugins/platforms/ || true
         cp $QT_PLUGIN_PATH/imageformats/*.so CollabRef-Linux/plugins/imageformats/ 2>/dev/null || true
         cp $QT_PLUGIN_PATH/xcbglintegrations/*.so CollabRef-Linux/plugins/xcbglintegrations/ 2>/dev/null || true
+        cp $QT_PLUGIN_PATH/platforminputcontexts/*.so CollabRef-Linux/plugins/platforminputcontexts/ 2>/dev/null || true
+        
+        # Copy ALL xcb and X11 related libraries
+        echo "Copying X11/xcb libraries..."
+        for lib in /usr/lib64/libxcb*.so* /usr/lib64/libX*.so* /usr/lib64/libxkb*.so*; do
+          [ -f "$lib" ] && cp -L "$lib" CollabRef-Linux/lib/ 2>/dev/null || true
+        done
+        
+        # Copy ALL Qt5 libraries (including private ones needed by plugins)
+        echo "Copying all Qt5 libraries..."
+        for lib in /usr/lib64/libQt5*.so*; do
+          [ -f "$lib" ] && cp -L "$lib" CollabRef-Linux/lib/ 2>/dev/null || true
+        done
         
         # Copy plugin dependencies
+        echo "Finding plugin dependencies..."
         for plugin in $(find CollabRef-Linux/plugins -name "*.so" 2>/dev/null); do
+          echo "Checking: $plugin"
           for lib in $(ldd "$plugin" 2>/dev/null | grep "=> /" | awk '{print $3}'); do
             case "$(basename $lib)" in
               libc.so*|libm.so*|libpthread*|libdl*) continue ;;
             esac
-            [ ! -f "CollabRef-Linux/lib/$(basename $lib)" ] && cp -L "$lib" CollabRef-Linux/lib/ 2>/dev/null || true
+            if [ ! -f "CollabRef-Linux/lib/$(basename $lib)" ]; then
+              echo "  Copying: $lib"
+              cp -L "$lib" CollabRef-Linux/lib/ 2>/dev/null || true
+            fi
           done
         done
         
@@ -87,9 +106,14 @@ jobs:
         chmod +x CollabRef-Linux/CollabRef.sh
         chmod +x CollabRef-Linux/CollabRef
         
+        # Verify xcb plugin can load
+        echo "=== Checking xcb plugin dependencies ==="
+        ldd CollabRef-Linux/plugins/platforms/libqxcb.so || true
+        
         # Show bundled libs
         echo "=== Bundled libraries ==="
-        ls -la CollabRef-Linux/lib/
+        ls -la CollabRef-Linux/lib/ | head -50
+        echo "Total: $(ls CollabRef-Linux/lib/ | wc -l) libraries"
         
         tar -czvf CollabRef-Linux-x64.tar.gz CollabRef-Linux
 
