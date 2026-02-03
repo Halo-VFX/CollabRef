@@ -221,6 +221,7 @@ void SyncServer::onTextMessageReceived(const QString &message)
         }
         if (!exists) {
             m_boardState.append(msg);
+            saveState();  // Save immediately on add
         }
         msg["userId"] = clientId;
         broadcast(msg, clientId);
@@ -249,6 +250,7 @@ void SyncServer::onTextMessageReceived(const QString &message)
             QJsonObject img = m_boardState[i].toObject();
             if (img["imageId"].toString() == imageId) {
                 m_boardState.removeAt(i);
+                saveState();  // Save immediately on delete
                 break;
             }
         }
@@ -268,6 +270,7 @@ void SyncServer::onTextMessageReceived(const QString &message)
         }
         if (!exists) {
             m_textState.append(msg);
+            saveState();  // Save immediately on add
         }
         msg["userId"] = clientId;
         broadcast(msg, clientId);
@@ -293,6 +296,7 @@ void SyncServer::onTextMessageReceived(const QString &message)
             QJsonObject txt = m_textState[i].toObject();
             if (txt["textId"].toString() == textId) {
                 m_textState.removeAt(i);
+                saveState();  // Save immediately on delete
                 break;
             }
         }
