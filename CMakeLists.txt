@@ -7,13 +7,21 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-# Find Qt6 (fallback to Qt5)
-find_package(Qt6 COMPONENTS Core Gui Widgets Network WebSockets OpenGLWidgets QUIET)
-if(NOT Qt6_FOUND)
+# Find Qt (prefer version specified by QT_VERSION_MAJOR if set)
+if(NOT DEFINED QT_VERSION_MAJOR)
+    # Try Qt6 first, fall back to Qt5
+    find_package(Qt6 COMPONENTS Core Gui Widgets Network WebSockets QUIET)
+    if(Qt6_FOUND)
+        set(QT_VERSION_MAJOR 6)
+    else()
+        find_package(Qt5 5.15 REQUIRED COMPONENTS Core Gui Widgets Network WebSockets)
+        set(QT_VERSION_MAJOR 5)
+    endif()
+elseif(QT_VERSION_MAJOR EQUAL 6)
+    find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network WebSockets)
+else()
     find_package(Qt5 5.15 REQUIRED COMPONENTS Core Gui Widgets Network WebSockets)
     set(QT_VERSION_MAJOR 5)
-else()
-    set(QT_VERSION_MAJOR 6)
 endif()
 
 # Source files
@@ -75,7 +83,6 @@ if(QT_VERSION_MAJOR EQUAL 6)
         Qt6::Widgets
         Qt6::Network
         Qt6::WebSockets
-        Qt6::OpenGLWidgets
     )
 else()
     target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -110,6 +117,3 @@ install(TARGETS ${PROJECT_NAME}
     BUNDLE DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
-
-# Copy server files for distribution
-install(DIRECTORY server/ DESTINATION server)

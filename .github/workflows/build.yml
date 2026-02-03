@@ -12,6 +12,7 @@ on:
 jobs:
   build-linux:
     runs-on: ubuntu-22.04
+    container: rockylinux:8
     
     steps:
     - name: Checkout
@@ -19,73 +20,55 @@ jobs:
 
     - name: Install Dependencies
       run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-          build-essential \
-          cmake \
-          qt6-base-dev \
-          libqt6websockets6-dev \
-          libgl1-mesa-dev \
-          libxkbcommon-dev \
-          libxcb-cursor0 \
-          patchelf
+        dnf install -y epel-release
+        dnf install -y gcc gcc-c++ cmake make git
+        dnf install -y qt5-qtbase-devel qt5-qtwebsockets-devel
+        dnf install -y mesa-libGL-devel libxkbcommon-devel
+        dnf install -y libxcb-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-renderutil-devel xcb-util-wm-devel
 
     - name: Configure
       run: |
         mkdir build
         cd build
-        cmake .. -DCMAKE_BUILD_TYPE=Release
+        cmake .. -DCMAKE_BUILD_TYPE=Release -DQT_VERSION_MAJOR=5
 
     - name: Build
       run: |
         cd build
         cmake --build . --config Release -j$(nproc)
 
-    - name: Package with Qt Libraries
+    - name: Package with Libraries
       run: |
         mkdir -p CollabRef-Linux/lib
         cp build/CollabRef CollabRef-Linux/
         
-        # Use ldd to find ALL dependencies and copy them
+        # Use ldd to find dependencies
         echo "Finding dependencies..."
-        ldd build/CollabRef | grep "=> /" | awk '{print $3}' | while read lib; do
-          # Skip system libs that are everywhere (libc, libm, libpthread, etc)
-          case "$lib" in
-            /lib/x86_64-linux-gnu/libc.so*) continue ;;
-            /lib/x86_64-linux-gnu/libm.so*) continue ;;
-            /lib/x86_64-linux-gnu/libpthread*) continue ;;
-            /lib/x86_64-linux-gnu/libdl*) continue ;;
-            /lib/x86_64-linux-gnu/librt*) continue ;;
-            /lib/x86_64-linux-gnu/libgcc*) continue ;;
-            /lib/x86_64-linux-gnu/ld-linux*) continue ;;
+        for lib in $(ldd build/CollabRef | grep "=> /" | awk '{print $3}' | sort -u); do
+          case "$(basename $lib)" in
+            libc.so*|libm.so*|libpthread*|libdl*|librt*|ld-linux*) continue ;;
           esac
           echo "Copying: $lib"
           cp -L "$lib" CollabRef-Linux/lib/ 2>/dev/null || true
         done
         
-        # Copy Qt plugins
-        QT_PLUGIN_PATH=$(qmake6 -query QT_INSTALL_PLUGINS)
+        # Copy Qt5 plugins
+        QT_PLUGIN_PATH=/usr/lib64/qt5/plugins
         mkdir -p CollabRef-Linux/plugins/platforms
-        mkdir -p CollabRef-Linux/plugins/xcbglintegrations
         mkdir -p CollabRef-Linux/plugins/imageformats
-        mkdir -p CollabRef-Linux/plugins/tls
+        mkdir -p CollabRef-Linux/plugins/xcbglintegrations
         cp $QT_PLUGIN_PATH/platforms/libqxcb.so CollabRef-Linux/plugins/platforms/ || true
-        cp $QT_PLUGIN_PATH/xcbglintegrations/* CollabRef-Linux/plugins/xcbglintegrations/ 2>/dev/null || true
-        cp $QT_PLUGIN_PATH/imageformats/* CollabRef-Linux/plugins/imageformats/ 2>/dev/null || true
-        cp $QT_PLUGIN_PATH/tls/* CollabRef-Linux/plugins/tls/ 2>/dev/null || true
+        cp $QT_PLUGIN_PATH/imageformats/*.so CollabRef-Linux/plugins/imageformats/ 2>/dev/null || true
+        cp $QT_PLUGIN_PATH/xcbglintegrations/*.so CollabRef-Linux/plugins/xcbglintegrations/ 2>/dev/null || true
         
-        # Copy plugin dependencies too
-        find CollabRef-Linux/plugins -name "*.so" -exec ldd {} \; 2>/dev/null | grep "=> /" | awk '{print $3}' | sort -u | while read lib; do
-          case "$lib" in
-            /lib/x86_64-linux-gnu/libc.so*) continue ;;
-            /lib/x86_64-linux-gnu/libm.so*) continue ;;
-            /lib/x86_64-linux-gnu/libpthread*) continue ;;
-            /lib/x86_64-linux-gnu/libdl*) continue ;;
-          esac
-          if [ ! -f "CollabRef-Linux/lib/$(basename $lib)" ]; then
-            echo "Copying plugin dep: $lib"
-            cp -L "$lib" CollabRef-Linux/lib/ 2>/dev/null || true
-          fi
+        # Copy plugin dependencies
+        for plugin in $(find CollabRef-Linux/plugins -name "*.so" 2>/dev/null); do
+          for lib in $(ldd "$plugin" 2>/dev/null | grep "=> /" | awk '{print $3}'); do
+            case "$(basename $lib)" in
+              libc.so*|libm.so*|libpthread*|libdl*) continue ;;
+            esac
+            [ ! -f "CollabRef-Linux/lib/$(basename $lib)" ] && cp -L "$lib" CollabRef-Linux/lib/ 2>/dev/null || true
+          done
         done
         
         # Copy docs
@@ -104,7 +87,7 @@ jobs:
         chmod +x CollabRef-Linux/CollabRef.sh
         chmod +x CollabRef-Linux/CollabRef
         
-        # List what we bundled
+        # Show bundled libs
         echo "=== Bundled libraries ==="
         ls -la CollabRef-Linux/lib/
         
