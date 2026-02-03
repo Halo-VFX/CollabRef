@@ -24,7 +24,7 @@ jobs:
         dnf install -y gcc gcc-c++ cmake make git
         dnf install -y qt5-qtbase-devel qt5-qtwebsockets-devel
         dnf install -y mesa-libGL-devel libxkbcommon-devel
-        dnf install -y libxcb-devel xcb-util-devel xcb-util-image-devel xcb-util-keysyms-devel xcb-util-renderutil-devel xcb-util-wm-devel
+        dnf install -y libxcb-devel xcb-util xcb-util-image xcb-util-keysyms xcb-util-renderutil xcb-util-wm
 
     - name: Configure
       run: |
