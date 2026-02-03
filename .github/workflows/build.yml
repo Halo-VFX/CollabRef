@@ -1,0 +1,121 @@
+name: Build CollabRef
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-24.04
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          build-essential \
+          qt6-base-dev \
+          qt6-websockets-dev \
+          libgl1-mesa-dev \
+          libxkbcommon-dev \
+          libxcb-cursor0
+
+    - name: Configure
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: |
+        cd build
+        cmake --build . --config Release -j$(nproc)
+
+    - name: Package
+      run: |
+        mkdir -p CollabRef-Linux
+        cp build/CollabRef CollabRef-Linux/
+        cp README.md CollabRef-Linux/
+        cp LINUX.md CollabRef-Linux/
+        cp -r resources CollabRef-Linux/
+        chmod +x CollabRef-Linux/CollabRef
+        tar -czvf CollabRef-Linux-x64.tar.gz CollabRef-Linux
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: CollabRef-Linux-x64
+        path: CollabRef-Linux-x64.tar.gz
+
+    - name: Upload Release Asset
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: CollabRef-Linux-x64.tar.gz
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '6.6.0'
+        host: 'windows'
+        target: 'desktop'
+        arch: 'win64_msvc2019_64'
+        modules: 'qtwebsockets'
+
+    - name: Setup MSVC
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Configure
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: |
+        cd build
+        cmake --build . --config Release
+
+    - name: Package
+      shell: pwsh
+      run: |
+        mkdir CollabRef-Windows
+        cp build/Release/CollabRef.exe CollabRef-Windows/
+        cp README.md CollabRef-Windows/
+        
+        # Deploy Qt DLLs
+        & windeployqt CollabRef-Windows/CollabRef.exe --release --no-translations
+        
+        Compress-Archive -Path CollabRef-Windows -DestinationPath CollabRef-Windows-x64.zip
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: CollabRef-Windows-x64
+        path: CollabRef-Windows-x64.zip
+
+    - name: Upload Release Asset
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: CollabRef-Windows-x64.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,52 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# Qt Creator
+*.pro.user
+*.pro.user.*
+*.qbs.user
+*.qbs.user.*
+*.moc
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.qmlc
+*.jsc
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+CollabRef
+CollabRef.app/
+
+# Packages
+*.zip
+*.tar.gz
+*.7z
+
+# vcpkg
+vcpkg/
+vcpkg_installed/
+
+# Node
+node_modules/
+
+# Misc
+*.log
+*.cref
