@@ -159,7 +159,7 @@ void CanvasView::wheelEvent(QWheelEvent *event)
         factor = 1.0 + (factor - 1.0) * 0.5;
     }
     
-    applyZoom(factor, event->position());
+    applyZoom(factor, event->pos());
     event->accept();
 }
 
@@ -330,7 +330,7 @@ void CanvasView::dragMoveEvent(QDragMoveEvent *event)
 void CanvasView::dropEvent(QDropEvent *event)
 {
     const QMimeData *mimeData = event->mimeData();
-    QPointF scenePos = mapToScene(event->position().toPoint());
+    QPointF scenePos = mapToScene(event->pos());
     
     if (mimeData->hasUrls()) {
         for (const QUrl &url : mimeData->urls()) {

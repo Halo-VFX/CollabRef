@@ -747,7 +747,7 @@ void MainWindow::dropEvent(QDropEvent *event)
 {
     const QMimeData *mimeData = event->mimeData();
     QPointF scenePos = m_canvasView->mapToScene(
-        m_canvasView->mapFromGlobal(mapToGlobal(event->position().toPoint())));
+        m_canvasView->mapFromGlobal(mapToGlobal(event->pos())));
     
     if (mimeData->hasUrls()) {
         for (const QUrl &url : mimeData->urls()) {
@@ -784,7 +784,7 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
         if (pos.y() >= rect.height() - RESIZE_MARGIN) m_resizeEdge = (ResizeEdge)(m_resizeEdge | Bottom);
         
         if (m_resizeEdge != None) {
-            m_resizeStartPos = event->globalPosition().toPoint();
+            m_resizeStartPos = event->globalPos();
             m_resizeStartGeometry = geometry();
             return;
         }
@@ -798,7 +798,7 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
 void MainWindow::mouseMoveEvent(QMouseEvent *event)
 {
     if (m_resizeEdge != None && event->buttons() & Qt::LeftButton) {
-        QPoint delta = event->globalPosition().toPoint() - m_resizeStartPos;
+        QPoint delta = event->globalPos() - m_resizeStartPos;
         QRect newGeom = m_resizeStartGeometry;
         
         if (m_resizeEdge & Left) {
