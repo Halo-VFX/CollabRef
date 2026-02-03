@@ -30,6 +30,7 @@
 #include <QSettings>
 #include <QStandardPaths>
 #include <QApplication>
+#include <QCoreApplication>
 #include <QScreen>
 #include <QCloseEvent>
 #include <QShortcut>
@@ -37,6 +38,9 @@
 #include <QUuid>
 #include <QImageReader>
 #include <QFileInfo>
+#include <QFile>
+#include <QDir>
+#include <QTextStream>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QEventLoop>
@@ -109,6 +113,9 @@ MainWindow::MainWindow(QWidget *parent)
     
     setAcceptDrops(true);
     updateWindowTitle();
+    
+    // Auto-connect to server if configured
+    QTimer::singleShot(500, this, &MainWindow::autoConnectToServer);
 }
 
 MainWindow::~MainWindow()
@@ -1141,5 +1148,115 @@ void MainWindow::onServerClientDisconnected(const QString &clientId)
     if (m_isHosting) {
         m_titleBar->showNotification(QString("Someone left (%1 connected)")
             .arg(m_server->clientCount()));
+    }
+}
+
+QString MainWindow::loadServerConfig()
+{
+    // Look for server.conf in the same directory as the executable
+    QString configPath = QCoreApplication::applicationDirPath() + "/server.conf";
+    
+    // Also check parent directory (for development)
+    if (!QFile::exists(configPath)) {
+        configPath = QCoreApplication::applicationDirPath() + "/../server.conf";
+    }
+    
+    // Also check home directory
+    if (!QFile::exists(configPath)) {
+        configPath = QDir::homePath() + "/.collabref/server.conf";
+    }
+    
+    if (QFile::exists(configPath)) {
+        QFile file(configPath);
+        if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream in(&file);
+            while (!in.atEnd()) {
+                QString line = in.readLine().trimmed();
+                if (line.isEmpty() || line.startsWith('#')) continue;
+                
+                if (line.startsWith("server=")) {
+                    m_configuredServerUrl = line.mid(7).trimmed();
+                } else if (line.startsWith("room=")) {
+                    m_configuredRoomId = line.mid(5).trimmed();
+                }
+            }
+            file.close();
+        }
+    }
+    
+    return m_configuredServerUrl;
+}
+
+void MainWindow::autoConnectToServer()
+{
+    QString serverUrl = loadServerConfig();
+    
+    // Default to localhost if no config
+    if (serverUrl.isEmpty()) {
+        serverUrl = "ws://localhost:8080";
+        m_configuredServerUrl = serverUrl;
+    }
+    
+    if (m_configuredRoomId.isEmpty()) {
+        m_configuredRoomId = "main";
+    }
+    
+    // Try to connect first - if it fails, we'll become the host
+    m_collabManager->connectToServer(serverUrl, m_configuredRoomId);
+    
+    // Setup reconnect timer that also tries to host if connection fails
+    if (!m_reconnectTimer) {
+        m_reconnectTimer = new QTimer(this);
+        m_reconnectTimer->setInterval(2000);
+        connect(m_reconnectTimer, &QTimer::timeout, this, &MainWindow::tryReconnect);
+    }
+    m_reconnectTimer->start();
+}
+
+void MainWindow::tryReconnect()
+{
+    if (m_collabManager->isConnected()) {
+        // Already connected, stop trying
+        if (!m_isHosting) {
+            m_titleBar->showNotification("Connected!");
+        }
+        m_reconnectTimer->setInterval(5000);  // Slow down checks
+        return;
+    }
+    
+    if (m_isHosting) {
+        // We're the host, just keep running
+        return;
+    }
+    
+    // Not connected and not hosting - try to become host
+    static int attempts = 0;
+    attempts++;
+    
+    if (attempts >= 2) {
+        // Failed to connect twice, become the host
+        m_titleBar->showNotification("Starting server...");
+        
+        // Save board next to the executable (shared location for all users)
+        QString sharedPath = QCoreApplication::applicationDirPath() + "/shared_board.json";
+        m_server->setSaveFile(sharedPath);
+        
+        if (m_server->start(8080)) {
+            m_isHosting = true;
+            
+            // Connect to our own server
+            QTimer::singleShot(500, this, [this]() {
+                m_collabManager->connectToServer("ws://localhost:8080", m_configuredRoomId);
+                m_titleBar->showNotification("Hosting - others can join!");
+            });
+            
+            attempts = 0;
+        } else {
+            // Port in use, keep trying to connect
+            m_collabManager->connectToServer(m_configuredServerUrl, m_configuredRoomId);
+        }
+    } else {
+        // Try connecting again
+        m_collabManager->connectToServer(m_configuredServerUrl, m_configuredRoomId);
     }
 }

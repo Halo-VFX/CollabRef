@@ -46,6 +46,8 @@ jobs:
         cp build/CollabRef CollabRef-Linux/
         cp README.md CollabRef-Linux/
         cp LINUX.md CollabRef-Linux/ 2>/dev/null || true
+        cp TEAM_SETUP.md CollabRef-Linux/ 2>/dev/null || true
+        cp server.conf CollabRef-Linux/ 2>/dev/null || true
         cp -r resources CollabRef-Linux/
         chmod +x CollabRef-Linux/CollabRef
         tar -czvf CollabRef-Linux-x64.tar.gz CollabRef-Linux

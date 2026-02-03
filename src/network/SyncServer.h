@@ -8,6 +8,7 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QJsonArray>
+#include <QTimer>
 
 class SyncServer : public QObject
 {
@@ -23,6 +24,10 @@ public:
     quint16 port() const;
     QString localAddress() const;
     int clientCount() const { return m_clients.count(); }
+    
+    void setSaveFile(const QString &path);
+    void saveState();
+    void loadState();
 
 signals:
     void clientConnected(const QString &clientId);
@@ -51,6 +56,10 @@ private:
     QJsonArray m_boardState;  // Images
     QJsonArray m_textState;   // Text items
     QString m_roomId;
+    
+    // Persistence
+    QString m_saveFilePath;
+    QTimer *m_saveTimer;
 };
 
 #endif // SYNCSERVER_H

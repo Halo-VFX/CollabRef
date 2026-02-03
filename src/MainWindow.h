@@ -64,6 +64,8 @@ private slots:
     void autoSave();
     void onServerClientConnected(const QString &clientId);
     void onServerClientDisconnected(const QString &clientId);
+    void autoConnectToServer();
+    void tryReconnect();
 
 private:
     void setupUI();
@@ -73,6 +75,7 @@ private:
     void saveSettings();
     void setFramelessWindow();
     void updateConnectionIndicator();
+    QString loadServerConfig();
 
     CanvasView *m_canvasView;
     CanvasScene *m_canvasScene;
@@ -111,6 +114,9 @@ private:
     QRect m_resizeStartGeometry;
 
     QTimer *m_autoSaveTimer;
+    QTimer *m_reconnectTimer;
+    QString m_configuredServerUrl;
+    QString m_configuredRoomId;
     
     static constexpr int RESIZE_MARGIN = 8;
 };

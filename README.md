@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/YOUR_USERNAME/CollabRef/actions/workflows/build.yml/badge.svg)](https://github.com/YOUR_USERNAME/CollabRef/actions)
 
-An infinite canvas-like application with real-time collaboration features. Drop images, arrange them on an infinite canvas, and collaborate with others in real-time.
+A PureRef-like application with real-time collaboration features. Drop images, arrange them on an infinite canvas, and collaborate with others in real-time.
 
 ## Download
 

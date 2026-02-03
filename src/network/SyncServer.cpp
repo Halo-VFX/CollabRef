@@ -2,12 +2,24 @@
 #include <QNetworkInterface>
 #include <QUuid>
 #include <QJsonArray>
+#include <QFile>
+#include <QDir>
+#include <QStandardPaths>
+#include <QDateTime>
 
 SyncServer::SyncServer(QObject *parent)
     : QObject(parent)
     , m_server(nullptr)
     , m_roomId(QUuid::createUuid().toString(QUuid::WithoutBraces).left(8))
+    , m_saveTimer(new QTimer(this))
 {
+    // Auto-save every 30 seconds
+    connect(m_saveTimer, &QTimer::timeout, this, &SyncServer::saveState);
+    
+    // Default save location
+    QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir().mkpath(dataDir);
+    m_saveFilePath = dataDir + "/shared_board.json";
 }
 
 SyncServer::~SyncServer()
@@ -27,6 +39,13 @@ bool SyncServer::start(quint16 port)
     if (m_server->listen(QHostAddress::Any, port)) {
         connect(m_server, &QWebSocketServer::newConnection,
                 this, &SyncServer::onNewConnection);
+        
+        // Load existing state from disk
+        loadState();
+        
+        // Start auto-save timer
+        m_saveTimer->start(30000);  // 30 seconds
+        
         emit serverStarted(m_server->serverPort());
         return true;
     } else {
@@ -41,6 +60,10 @@ bool SyncServer::start(quint16 port)
 void SyncServer::stop()
 {
     if (m_server) {
+        // Save state before stopping
+        saveState();
+        m_saveTimer->stop();
+        
         // Close all client connections
         for (QWebSocket *client : m_clients) {
             client->close();
@@ -49,9 +72,9 @@ void SyncServer::stop()
         m_clientIds.clear();
         m_clientsById.clear();
         
-        // Clear board state for fresh start next time
-        m_boardState = QJsonArray();
-        m_textState = QJsonArray();
+        // Don't clear state - keep it for next start
+        // m_boardState = QJsonArray();
+        // m_textState = QJsonArray();
         
         m_server->close();
         delete m_server;
@@ -366,5 +389,47 @@ void SyncServer::sendToClient(const QString &clientId, const QJsonObject &messag
     if (client) {
         QByteArray data = QJsonDocument(message).toJson(QJsonDocument::Compact);
         client->sendTextMessage(QString::fromUtf8(data));
+    }
+}
+
+void SyncServer::setSaveFile(const QString &path)
+{
+    m_saveFilePath = path;
+}
+
+void SyncServer::saveState()
+{
+    if (m_saveFilePath.isEmpty()) return;
+    if (m_boardState.isEmpty() && m_textState.isEmpty()) return;
+    
+    QJsonObject root;
+    root["images"] = m_boardState;
+    root["texts"] = m_textState;
+    root["savedAt"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    
+    QFile file(m_saveFilePath);
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(QJsonDocument(root).toJson());
+        file.close();
+    }
+}
+
+void SyncServer::loadState()
+{
+    if (m_saveFilePath.isEmpty()) return;
+    
+    QFile file(m_saveFilePath);
+    if (!file.exists()) return;
+    
+    if (file.open(QIODevice::ReadOnly)) {
+        QByteArray data = file.readAll();
+        file.close();
+        
+        QJsonDocument doc = QJsonDocument::fromJson(data);
+        if (doc.isObject()) {
+            QJsonObject root = doc.object();
+            m_boardState = root["images"].toArray();
+            m_textState = root["texts"].toArray();
+        }
     }
 }
