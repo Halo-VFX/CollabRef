@@ -11,7 +11,7 @@ on:
 
 jobs:
   build-linux:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     
     steps:
     - name: Checkout
@@ -21,10 +21,10 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y \
-          cmake \
           build-essential \
+          cmake \
           qt6-base-dev \
-          qt6-websockets-dev \
+          libqt6websockets6-dev \
           libgl1-mesa-dev \
           libxkbcommon-dev \
           libxcb-cursor0
@@ -45,7 +45,7 @@ jobs:
         mkdir -p CollabRef-Linux
         cp build/CollabRef CollabRef-Linux/
         cp README.md CollabRef-Linux/
-        cp LINUX.md CollabRef-Linux/
+        cp LINUX.md CollabRef-Linux/ 2>/dev/null || true
         cp -r resources CollabRef-Linux/
         chmod +x CollabRef-Linux/CollabRef
         tar -czvf CollabRef-Linux-x64.tar.gz CollabRef-Linux

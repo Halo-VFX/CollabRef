@@ -18,8 +18,15 @@ SyncClient::SyncClient(QObject *parent)
             this, &SyncClient::onDisconnected);
     connect(m_socket, &QWebSocket::textMessageReceived,
             this, &SyncClient::onTextMessageReceived);
-    connect(m_socket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::errorOccurred),
+    
+    // Qt version compatibility for error signal
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+    connect(m_socket, &QWebSocket::errorOccurred,
             this, &SyncClient::onError);
+#else
+    connect(m_socket, QOverload<QAbstractSocket::SocketError>::of(&QWebSocket::error),
+            this, &SyncClient::onError);
+#endif
     
     connect(m_pingTimer, &QTimer::timeout, this, &SyncClient::sendPing);
     
