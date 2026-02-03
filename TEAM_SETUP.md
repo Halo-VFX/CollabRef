@@ -1,112 +1,66 @@
 # CollabRef Team Setup
 
-One shared board that everyone can use simultaneously.
+One shared board that everyone can use simultaneously. Zero setup required.
 
-## Setup (One Time - Admin Only)
-
-### Step 1: Start the Server
-
-On your Linux server:
+## Usage
 
 ```bash
-# Download persistent server
-mkdir ~/collabref-server && cd ~/collabref-server
+# Extract
+tar -xzf CollabRef-Linux-x64.tar.gz
 
-# Create server.js (copy from CollabRef-PersistentServer.zip)
-# Or download directly from your release
-
-npm install ws
-node server.js
+# Run
+cd CollabRef-Linux
+./CollabRef.sh
 ```
 
-Or use PM2 to run forever:
-```bash
-npm install -g pm2
-pm2 start server.js --name collabref
-pm2 startup && pm2 save
-```
-
-Note your server's IP (e.g., `192.168.1.100`)
-
-### Step 2: Configure the Client
-
-Edit `server.conf` (next to CollabRef executable):
-
-```
-server=ws://192.168.1.100:8080
-room=main
-```
-
-### Step 3: Distribute to Team
-
-Give everyone:
-1. The CollabRef executable
-2. The `server.conf` file (already configured)
-
----
-
-## For Users
-
-Just double-click `CollabRef` - that's it!
-
-- App auto-connects to the team board
-- Everyone sees the same canvas
-- Add images, they appear for everyone
-- Close the app anytime, your work is saved on the server
+**That's it.** No server setup, no configuration, no dependencies.
 
 ---
 
 ## How It Works
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   User A    │     │   User B    │     │   User C    │
-│  CollabRef  │     │  CollabRef  │     │  CollabRef  │
-└──────┬──────┘     └──────┬──────┘     └──────┬──────┘
-       │                   │                   │
-       └───────────────────┼───────────────────┘
-                           │
-                    ┌──────▼──────┐
-                    │   Server    │
-                    │ (Linux box) │
-                    │             │
-                    │ boards/     │
-                    │  main.json  │ ◄── Saved to disk
-                    └─────────────┘
+User A runs ./CollabRef.sh  →  Becomes host automatically
+User B runs ./CollabRef.sh  →  Connects to User A
+User C runs ./CollabRef.sh  →  Connects to User A
+
+Everyone sees the same board in real-time.
+Board saved to shared_board.json automatically.
 ```
 
-- Server runs 24/7 on your Linux machine
-- Board state saved to disk every 30 seconds
-- Users connect/disconnect freely
-- Everyone always sees the latest state
+---
+
+## What Happens When...
+
+| Scenario | Result |
+|----------|--------|
+| Everyone closes the app | Board saved to `shared_board.json` |
+| Someone opens it tomorrow | Loads saved board, all content there |
+| Host closes, others stay | Someone else becomes host automatically |
+| Server reboots | File persists, just run the app again |
+
+---
+
+## Files
+
+```
+CollabRef-Linux/
+├── CollabRef.sh         ← Run this
+├── CollabRef            ← The app
+├── shared_board.json    ← Your board (auto-created)
+├── lib/                 ← Bundled libraries
+└── plugins/             ← Qt plugins
+```
 
 ---
 
 ## Multiple Boards
 
-Want separate boards? Edit `server.conf`:
+Want separate boards? Make copies:
 
+```bash
+cp -r CollabRef-Linux ProjectA
+cp -r CollabRef-Linux ProjectB
 ```
-room=project-alpha   # One team
-room=project-beta    # Another team
-room=main            # Default
-```
 
-Each room is a separate board, saved as a separate file.
-
----
-
-## Troubleshooting
-
-**Can't connect?**
-- Check server is running: `curl http://SERVER_IP:8080/health`
-- Check firewall: `sudo ufw allow 8080/tcp`
-- Check server.conf has correct IP
-
-**Changes not syncing?**
-- Right-click → Collaborate → Sync Now
-- Check server logs: `pm2 logs collabref`
-
-**Server IP changed?**
-- Edit `server.conf` with new IP
-- Restart CollabRef
+Each folder has its own `shared_board.json`.

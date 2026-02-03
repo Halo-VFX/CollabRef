@@ -50,3 +50,4 @@ node_modules/
 # Misc
 *.log
 *.cref
+shared_board.json

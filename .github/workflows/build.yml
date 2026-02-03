@@ -27,7 +27,8 @@ jobs:
           libqt6websockets6-dev \
           libgl1-mesa-dev \
           libxkbcommon-dev \
-          libxcb-cursor0
+          libxcb-cursor0 \
+          patchelf
 
     - name: Configure
       run: |
@@ -40,16 +41,47 @@ jobs:
         cd build
         cmake --build . --config Release -j$(nproc)
 
-    - name: Package
+    - name: Package with Qt Libraries
       run: |
-        mkdir -p CollabRef-Linux
+        mkdir -p CollabRef-Linux/lib
         cp build/CollabRef CollabRef-Linux/
+        
+        # Copy Qt libraries
+        QT_LIB_PATH=$(qmake6 -query QT_INSTALL_LIBS)
+        cp -L $QT_LIB_PATH/libQt6Core.so.6 CollabRef-Linux/lib/
+        cp -L $QT_LIB_PATH/libQt6Gui.so.6 CollabRef-Linux/lib/
+        cp -L $QT_LIB_PATH/libQt6Widgets.so.6 CollabRef-Linux/lib/
+        cp -L $QT_LIB_PATH/libQt6Network.so.6 CollabRef-Linux/lib/
+        cp -L $QT_LIB_PATH/libQt6WebSockets.so.6 CollabRef-Linux/lib/
+        cp -L $QT_LIB_PATH/libQt6DBus.so.6 CollabRef-Linux/lib/ || true
+        cp -L $QT_LIB_PATH/libQt6XcbQpa.so.6 CollabRef-Linux/lib/ || true
+        cp -L $QT_LIB_PATH/libQt6OpenGL.so.6 CollabRef-Linux/lib/ || true
+        cp -L $QT_LIB_PATH/libQt6OpenGLWidgets.so.6 CollabRef-Linux/lib/ || true
+        
+        # Copy Qt plugins
+        QT_PLUGIN_PATH=$(qmake6 -query QT_INSTALL_PLUGINS)
+        mkdir -p CollabRef-Linux/plugins/platforms
+        mkdir -p CollabRef-Linux/plugins/xcbglintegrations
+        cp -r $QT_PLUGIN_PATH/platforms/libqxcb.so CollabRef-Linux/plugins/platforms/ || true
+        cp -r $QT_PLUGIN_PATH/xcbglintegrations/* CollabRef-Linux/plugins/xcbglintegrations/ || true
+        
+        # Copy other files
         cp README.md CollabRef-Linux/
         cp LINUX.md CollabRef-Linux/ 2>/dev/null || true
         cp TEAM_SETUP.md CollabRef-Linux/ 2>/dev/null || true
-        cp server.conf CollabRef-Linux/ 2>/dev/null || true
         cp -r resources CollabRef-Linux/
+        
+        # Create launcher script
+        cat > CollabRef-Linux/CollabRef.sh << 'EOF'
+        #!/bin/bash
+        DIR="$(cd "$(dirname "$0")" && pwd)"
+        export LD_LIBRARY_PATH="$DIR/lib:$LD_LIBRARY_PATH"
+        export QT_PLUGIN_PATH="$DIR/plugins"
+        exec "$DIR/CollabRef" "$@"
+        EOF
+        chmod +x CollabRef-Linux/CollabRef.sh
         chmod +x CollabRef-Linux/CollabRef
+        
         tar -czvf CollabRef-Linux-x64.tar.gz CollabRef-Linux
 
     - name: Upload Artifact

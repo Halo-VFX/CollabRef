@@ -18,11 +18,13 @@ Or go to [Releases](https://github.com/YOUR_USERNAME/CollabRef/releases) for all
 ```bash
 tar -xzf CollabRef-Linux-x64.tar.gz
 cd CollabRef-Linux
-./CollabRef
+./CollabRef.sh
 ```
 
 ### Windows
 Extract the zip and run `CollabRef.exe`
+
+**No installation required** - all libraries are bundled.
 
 ## Features
 
@@ -31,24 +33,25 @@ Extract the zip and run `CollabRef.exe`
 - **Real-time Collaboration**: See other users' cursors and changes instantly
 - **Text Annotations**: Add text notes to your board
 - **GIF Support**: Animated GIFs play in the canvas
-- **Built-in Server**: No external server needed - host directly from the app
+- **Zero Config**: Just run the app - first user hosts, others connect automatically
+- **Persistent**: Board saves to disk, survives restarts
 - **Frameless Window**: Minimal UI that stays out of your way
 - **Always on Top**: Keep your references visible while working
 - **Save/Load**: Save boards to `.cref` files
 
-## Collaboration (Same Network)
+## Collaboration (Automatic!)
 
-### Person A (Host):
-1. **Right-click → Collaborate → Host Session**
-2. Choose **"Same Network"**
-3. Share the IP shown (e.g., `192.168.1.50:8080`)
+On the same server/network, everyone just runs:
+```bash
+./CollabRef.sh
+```
 
-### Person B (Join):
-1. **Right-click → Collaborate → Join Session**
-2. Enter: `ws://192.168.1.50:8080`
-3. Room ID: `collab` (any name works)
+- **First person** becomes the host automatically
+- **Everyone else** connects automatically
+- **Board saves** to `shared_board.json` next to the app
+- **Persistent** - close and reopen anytime, your work is saved
 
-**You're now collaborating!**
+No server setup, no configuration, no dependencies.
 
 ## Building from Source
 
@@ -163,17 +166,9 @@ The server runs on port 8080 by default. Set `PORT` environment variable to chan
 
 ### Collaboration
 
-CollabRef has a **built-in server** - no external setup needed!
+On a shared server, everyone just runs the app - collaboration is automatic!
 
-**Hosting Options:**
-
-| Option | Use When |
-|--------|----------|
-| Same Network | You're on the same WiFi/LAN |
-| Over Internet | You've set up port forwarding |
-| Using ngrok | Quick internet sharing (requires [ngrok](https://ngrok.com)) |
-
-**Same Network** is the easiest - just share your local IP!
+You can also manually host/join via **Right-click → Collaborate** if needed.
 
 ### File Format
 
@@ -208,23 +203,20 @@ CollabRef/
 ├── resources/
 │   ├── resources.qrc       # Qt resources
 │   └── icons/              # Application icons
-└── server/
-    ├── package.json        # Node.js dependencies
-    └── server.js           # Collaboration server
 ```
 
 ## Troubleshooting
 
-### "Qt platform plugin could not be initialized"
-Make sure you've run `windeployqt` or the Qt bin directory is in your PATH.
-
-### WebSocket connection fails
-- Check that the server is running
-- Verify firewall settings allow the port
-- Ensure the URL includes the protocol (`ws://` or `wss://`)
+### Linux: "Permission denied"
+```bash
+chmod +x CollabRef.sh CollabRef
+```
 
 ### Images appear blurry
 This is normal when zoomed out. Zoom in to see full quality.
+
+### Board not syncing
+Right-click → Collaborate → Sync Now
 
 ## License
 
